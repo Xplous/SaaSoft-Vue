@@ -20,11 +20,9 @@
           class="rounded-lg border bg-card shadow-sm p-4"
       >
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <!-- Метки -->
           <div class="flex flex-col">
-            <Label for="metka" class="mb-1 text-sm font-medium">Метки</Label>
+            <Label class="mb-1 text-sm font-medium">Метки</Label>
             <Input
-                id="metka"
                 type="text"
                 v-model="account.rawLabel"
                 @blur="onLabelBlur(account)"
@@ -33,30 +31,22 @@
                 class="rounded-xl"
             />
           </div>
-
-          <!-- Тип записи -->
           <div class="flex flex-col">
-            <Label for="type_record" class="mb-1 text-sm font-medium">Тип записи</Label>
+            <Label class="mb-1 text-sm font-medium">Тип записи</Label>
             <Select
-                id="type_record"
                 v-model="account.accountType"
+                @update:modelValue="onAccountTypeChange(account)"
                 @change="onAccountTypeChange(account)"
             >
               <SelectTrigger class="rounded-xl border-blue-600">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent class="bg-white">
-                <SelectItem value="LDAP">
-                  LDAP
-                </SelectItem>
-                <SelectItem value="Локальная">
-                  Локальная
-                </SelectItem>
+                <SelectItem value="LDAP">LDAP</SelectItem>
+                <SelectItem value="Локальная">Локальная</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          <!-- Логин -->
           <div class="flex flex-col">
             <Label class="mb-1 text-sm font-medium">Логин</Label>
             <Input
@@ -70,8 +60,6 @@
             />
           </div>
         </div>
-
-        <!-- Пароль (для локальных аккаунтов) -->
         <div v-if="account.accountType === 'Локальная'" class="mt-4 flex flex-col">
           <Label class="mb-1 text-sm font-medium">Пароль</Label>
           <Input
@@ -83,16 +71,8 @@
               class="rounded-xl"
           />
         </div>
-
-        <!-- Кнопка удаления -->
         <div class="mt-4 flex justify-end">
-          <Button
-              @click="removeAccount(account.id)"
-              title="Удалить запись"
-              class="rounded-xl"
-          >
-            Удалить
-          </Button>
+          <Button @click="removeAccount(account.id)" class="rounded-xl">Удалить</Button>
         </div>
       </div>
     </div>
@@ -101,43 +81,40 @@
 
 <script lang="ts">
 import { defineComponent, watch } from 'vue';
-import { useAccountsStore, Account } from '../stores/accounts';
-import { Input } from '@/components/ui/input'
-import {Button} from "@/components/ui/button";
-import {Label} from "@/components/ui/label";
-import {Select, SelectItem, SelectContent, SelectTrigger, SelectValue} from '@/components/ui/select'
+import { useAccountsStore } from '../stores/accounts';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label'
+import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { Account } from '../stores/accounts';
+import {Input} from "@/components/ui/input";
+
 export default defineComponent({
   name: 'AccountManager',
-  components: {
-    Input, Label, Button, Select, SelectItem, SelectContent,SelectTrigger,SelectValue
-  },
+  components: { Input, Label, Button, Select, SelectItem, SelectContent, SelectTrigger, SelectValue },
   setup() {
     const accountsStore = useAccountsStore();
     accountsStore.loadFromLocalStorage();
 
+    accountsStore.accounts.forEach(account => {
+      account.rawLabel = account.rawLabel ?? '';
+      account.accountType = account.accountType ?? '';
+      account.login = account.login ?? '';
+      account.password = account.password ?? ''; // Избавляемся от null
+    });
+
     const validateAccount = (account: Account) => {
-      const loginValid = account.login.trim().length >= 0 && account.login.length <= 100;
-      const passwordValid =
-          account.accountType === 'LDAP' ||
-          (account.password !== null &&
-              account.password.trim().length >= 0 &&
-              account.password.length <= 100);
+      const loginValid = account.login.trim().length <= 100;
+      const passwordValid = account.accountType === 'LDAP' || (account.password?.length ?? 0) <= 100;
       const labelValid = account.rawLabel.trim().length <= 50;
 
-      // Проставляем флаги валидации
       account.loginValid = loginValid;
       account.passwordValid = passwordValid;
       account.rawLabelValid = labelValid;
-
       account.isValid = loginValid && passwordValid && labelValid;
-      return account.isValid;
     };
 
     const onLabelBlur = (account: Account) => {
-      account.label = account.rawLabel
-          .split(';')
-          .map((item) => ({ text: item.trim() }))
-          .filter((item) => item.text !== '');
+      account.label = account.rawLabel.split(';').map(text => ({ text: text.trim() })).filter(item => item.text);
       validateAccount(account);
       accountsStore.saveToLocalStorage();
     };
@@ -154,8 +131,6 @@ export default defineComponent({
 
     const onAccountTypeChange = (account: Account) => {
       if (account.accountType === 'LDAP') {
-        account.password = null;
-      } else if (account.password === null) {
         account.password = '';
       }
       validateAccount(account);
@@ -174,21 +149,11 @@ export default defineComponent({
 
     watch(
         () => accountsStore.accounts,
-        (accounts) => {
-          accounts.forEach((acc) => validateAccount(acc));
-        },
+        (accounts) => accounts.forEach(validateAccount),
         { deep: true }
     );
-    return {
-      accountsStore,
-      addAccount,
-      removeAccount,
-      onLabelBlur,
-      onLoginBlur,
-      onPasswordBlur,
-      onAccountTypeChange,
-      validateAccount,
-    };
+
+    return { accountsStore, addAccount, removeAccount, onLabelBlur, onLoginBlur, onPasswordBlur, onAccountTypeChange, validateAccount };
   },
 });
 </script>

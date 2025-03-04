@@ -1,20 +1,19 @@
 // store/accounts.ts
 import { defineStore } from 'pinia';
 
-export interface Label {
-    text: string;
-}
-
 export type AccountType = 'LDAP' | 'Локальная';
 
 export interface Account {
     id: number;
-    label: Label[];
+    label: { text: string }[];
     rawLabel: string;
     accountType: AccountType;
     login: string;
-    password: string | null;
+    password: string;
     isValid: boolean;
+    loginValid: boolean;    // Добавьте эти поля
+    passwordValid: boolean;
+    rawLabelValid: boolean;
 }
 
 export const useAccountsStore = defineStore('accounts', {
@@ -30,16 +29,13 @@ export const useAccountsStore = defineStore('accounts', {
                 rawLabel: '',
                 accountType: 'Локальная',
                 login: '',
-                password: null,
+                password: '',
                 isValid: false,
+                loginValid: false,
+                passwordValid: false,
+                rawLabelValid: false,
             };
             this.accounts.push(account);
-        },
-        updateAccount(updated: Account) {
-            const index = this.accounts.findIndex(acc => acc.id === updated.id);
-            if (index !== -1) {
-                this.accounts[index] = updated;
-            }
         },
         removeAccount(id: number) {
             this.accounts = this.accounts.filter(acc => acc.id !== id);
